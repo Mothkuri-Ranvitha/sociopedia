@@ -1,5 +1,4 @@
 import express from "express";
-import bodyParser from "body-parser";
 import mongoose from "mongoose";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -24,11 +23,12 @@ const __dirname = path.dirname(__filename);
 dotenv.config();
 const app = express();
 
-/* TRUST PROXY (for CloudFront / AWS) */
+/* TRUST PROXY (for AWS / CloudFront) */
 app.set("trust proxy", 1);
 
 /* MIDDLEWARE */
-app.use(express.json());
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
 app.use(
   helmet({
@@ -38,10 +38,7 @@ app.use(
 
 app.use(morgan("common"));
 
-app.use(bodyParser.json({ limit: "30mb", extended: true }));
-app.use(bodyParser.urlencoded({ limit: "30mb", extended: true }));
-
-/* CORS CONFIG (VERY IMPORTANT) */
+/* CORS CONFIG */
 app.use(
   cors({
     origin: [
@@ -55,9 +52,9 @@ app.use(
 /* STATIC FILES */
 app.use("/assets", express.static(path.join(__dirname, "public/assets")));
 
-/* HEALTH CHECK ROUTE */
+/* HEALTH CHECK */
 app.get("/", (req, res) => {
-  res.send("🚀 Sociopedia Backend Running Successfully on AWS EC2");
+  res.send("🚀 Sociopedia Backend Running Successfully");
 });
 
 /* FILE STORAGE */
@@ -69,7 +66,11 @@ const storage = multer.diskStorage({
     cb(null, file.originalname);
   },
 });
-const upload = multer({ storage });
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+});
 
 /* ROUTES WITH FILES */
 app.post("/auth/register", upload.single("picture"), register);
@@ -94,4 +95,3 @@ mongoose
     );
   })
   .catch((error) => console.log("❌ MongoDB connection error:", error));
-
